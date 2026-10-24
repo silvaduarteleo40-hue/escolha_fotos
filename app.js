@@ -210,6 +210,7 @@ async function loadFolderContents() {
   document.getElementById('finishSelectionBtn').classList.remove('hidden');
 
   renderAll();
+  warmUpPhotoUrls();
 
   // Se for a primeira vez abrindo a pasta, abre o modal para renomear e definir o pacote
   if (!hadSavedSession) {
@@ -231,7 +232,10 @@ function sanitizeEssayName(raw) {
     .replace(/\s+/g, '_');
 }
 
+const decodedImageCache = new Map();
+
 function revokeAllUrls() {
+  decodedImageCache.clear();
   for (const p of state.photos) {
     if (p.url) URL.revokeObjectURL(p.url);
   }
@@ -242,6 +246,51 @@ async function getPhotoUrl(photo) {
   const file = await photo.handle.getFile();
   photo.url = URL.createObjectURL(file);
   return photo.url;
+}
+
+// Pré-carrega os ObjectURLs em segundo plano para troca instantânea
+async function warmUpPhotoUrls() {
+  const snapshot = [...state.photos];
+  for (const photo of snapshot) {
+    if (!state.dirHandle) break;
+    if (!photo.url) {
+      try {
+        await getPhotoUrl(photo);
+      } catch {}
+    }
+  }
+}
+
+// Pré-decodifica as fotos vizinhas na memória da placa de vídeo (0ms de atraso ao passar)
+function preloadNeighborImages(filtered, activeIdx) {
+  if (filtered.length <= 1) return;
+  const offsets = [1, 2, 3, 4, -1, -2];
+  const keepNames = new Set([filtered[activeIdx].name]);
+
+  for (const delta of offsets) {
+    const idx = (activeIdx + delta + filtered.length) % filtered.length;
+    const neighbor = filtered[idx];
+    keepNames.add(neighbor.name);
+
+    if (!decodedImageCache.has(neighbor.name)) {
+      getPhotoUrl(neighbor).then((url) => {
+        const preImg = new Image();
+        preImg.decoding = 'async';
+        preImg.src = url;
+        if (preImg.decode) {
+          preImg.decode().catch(() => {});
+        }
+        decodedImageCache.set(neighbor.name, preImg);
+      }).catch(() => {});
+    }
+  }
+
+  // Limpa fotos distantes do cache de decodificação para não ocupar memória demais
+  for (const key of decodedImageCache.keys()) {
+    if (!keepNames.has(key)) {
+      decodedImageCache.delete(key);
+    }
+  }
 }
 
 // ==========================================
@@ -701,9 +750,20 @@ function renderLoupeView(filtered) {
   const photo = filtered[activeIdx];
 
   const mainImg = document.getElementById('loupeImage');
-  getPhotoUrl(photo).then((url) => {
-    mainImg.src = url;
-  });
+  if (photo.url) {
+    if (mainImg.src !== photo.url) {
+      mainImg.src = photo.url;
+    }
+  } else {
+    getPhotoUrl(photo).then((url) => {
+      if (state.activePhotoName === photo.name) {
+        mainImg.src = url;
+      }
+    });
+  }
+
+  // Pré-carrega e decodifica as próximas fotos e as anteriores na memória
+  preloadNeighborImages(filtered, activeIdx);
 
   document.getElementById('loupePositionText').textContent = `${activeIdx + 1} de ${filtered.length}`;
   document.getElementById('loupeFilenameText').textContent = photo.name;
@@ -728,11 +788,6 @@ function renderLoupeView(filtered) {
 
   const maybeBtn = document.getElementById('loupeMaybeBtn');
   maybeBtn.classList.toggle('active-maybe', photo.status === 'maybe');
-
-  renderFilmstrip('loupeFilmstrip', filtered, photo.name, (clickedPhoto) => {
-    state.activePhotoName = clickedPhoto.name;
-    renderLoupeView(filtered);
-  });
 }
 
 function navigatePhoto(delta) {
@@ -967,7 +1022,6 @@ function resetToWelcomeScreen() {
 
   document.getElementById('sessionNameLabel').textContent = 'Nenhum ensaio aberto';
   document.getElementById('gridView').innerHTML = '';
-  document.getElementById('loupeFilmstrip').innerHTML = '';
   document.getElementById('compareFilmstrip').innerHTML = '';
 
   document.getElementById('packageWidget').classList.add('hidden');
