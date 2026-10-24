@@ -103,6 +103,9 @@ function bindEvents() {
   document.getElementById('loupeNextBtn').addEventListener('click', () => navigatePhoto(1));
   document.getElementById('loupeSelectBtn').addEventListener('click', () => toggleActiveStatus('selected'));
   document.getElementById('loupeMaybeBtn').addEventListener('click', () => toggleActiveStatus('maybe'));
+  document.getElementById('loupeBannerBtn').addEventListener('click', () => toggleActiveSpecial('Banner'));
+  document.getElementById('loupe15x21Btn').addEventListener('click', () => toggleActiveSpecial('15x21'));
+  document.getElementById('loupePosterBtn').addEventListener('click', () => toggleActiveSpecial('Foto Pôster'));
   document.getElementById('loupeCompareBtn').addEventListener('click', startCompareWithActive);
   document.getElementById('loupeZoomBtn').addEventListener('click', toggleLoupeZoom);
   document.getElementById('loupeImage').addEventListener('click', toggleLoupeZoom);
@@ -187,6 +190,7 @@ async function loadFolderContents() {
     name: handle.name,
     handle,
     status: 'none',
+    specials: [],
     url: null,
     index: idx + 1
   }));
@@ -313,6 +317,13 @@ async function loadSavedSessionFromFolder() {
         }
       }
     }
+    if (data.specials && typeof data.specials === 'object') {
+      for (const photo of state.photos) {
+        if (Array.isArray(data.specials[photo.name])) {
+          photo.specials = data.specials[photo.name];
+        }
+      }
+    }
     return true;
   } catch {
     state.essayName = sanitizeEssayName(state.folderName);
@@ -324,9 +335,13 @@ async function saveSessionToFolder() {
   if (!state.dirHandle) return;
   try {
     const statuses = {};
+    const specials = {};
     for (const p of state.photos) {
       if (p.status !== 'none') {
         statuses[p.name] = p.status;
+      }
+      if (p.specials && p.specials.length > 0) {
+        specials[p.name] = p.specials;
       }
     }
     const payload = {
@@ -334,7 +349,8 @@ async function saveSessionToFolder() {
       packageLimit: state.packageLimit,
       extraPrice: state.extraPrice,
       updatedAt: new Date().toISOString(),
-      statuses
+      statuses,
+      specials
     };
     const fileHandle = await state.dirHandle.getFileHandle(SESSION_FILENAME, { create: true });
     const writable = await fileHandle.createWritable();
@@ -475,6 +491,7 @@ async function renamePhotosInFolder(prefix) {
 function getFilteredPhotos() {
   return state.photos.filter((p) => {
     if (state.currentFilter === 'selected') return p.status === 'selected';
+    if (state.currentFilter === 'special') return p.specials && p.specials.length > 0;
     if (state.currentFilter === 'maybe') return p.status === 'maybe';
     if (state.currentFilter === 'unmarked') return p.status === 'none';
     return true;
@@ -546,6 +563,33 @@ function toggleActiveStatus(targetStatus) {
   togglePhotoStatus(state.activePhotoName, targetStatus);
 }
 
+function togglePhotoSpecial(photoName, specType) {
+  const photo = state.photos.find((p) => p.name === photoName);
+  if (!photo) return;
+  if (!Array.isArray(photo.specials)) photo.specials = [];
+
+  const idx = photo.specials.indexOf(specType);
+  if (idx >= 0) {
+    photo.specials.splice(idx, 1);
+    showToast(`Removida marcação de ${specType} em ${photo.name}`);
+  } else {
+    photo.specials.push(specType);
+    // Garante que a foto também fique marcada como Escolhida (❤️)
+    if (photo.status !== 'selected') {
+      photo.status = 'selected';
+    }
+    showToast(`🖼️ ${photo.name} marcada para ${specType}!`);
+  }
+
+  saveSessionToFolder();
+  renderAll();
+}
+
+function toggleActiveSpecial(specType) {
+  if (!state.activePhotoName) return;
+  togglePhotoSpecial(state.activePhotoName, specType);
+}
+
 // ==========================================
 // RENDERIZAÇÃO GERAL
 // ==========================================
@@ -580,11 +624,13 @@ function renderAll() {
 function updateCountsAndTabs() {
   const total = state.photos.length;
   const selected = state.photos.filter((p) => p.status === 'selected').length;
+  const special = state.photos.filter((p) => p.specials && p.specials.length > 0).length;
   const maybe = state.photos.filter((p) => p.status === 'maybe').length;
   const unmarked = total - selected - maybe;
 
   document.getElementById('countAll').textContent = total;
   document.getElementById('countSelected').textContent = selected;
+  document.getElementById('countSpecial').textContent = special;
   document.getElementById('countMaybe').textContent = maybe;
   document.getElementById('countUnmarked').textContent = unmarked;
 }
@@ -677,6 +723,18 @@ function renderGridView(filtered) {
       thumbWrap.appendChild(pill);
     }
 
+    if (photo.specials && photo.specials.length > 0) {
+      const specWrap = document.createElement('div');
+      specWrap.className = 'card-special-tags';
+      for (const sp of photo.specials) {
+        const spBadge = document.createElement('span');
+        spBadge.className = 'pill-special';
+        spBadge.textContent = `🖼️ ${sp}`;
+        specWrap.appendChild(spBadge);
+      }
+      thumbWrap.appendChild(specWrap);
+    }
+
     thumbWrap.addEventListener('click', () => {
       state.activePhotoName = photo.name;
       setView('loupe');
@@ -732,8 +790,30 @@ function renderGridView(filtered) {
     footer.appendChild(nameSpan);
     footer.appendChild(actions);
 
+    // Barra rápida de Ampliações (Banner, 15x21, Foto Pôster)
+    const specBar = document.createElement('div');
+    specBar.className = 'card-special-bar';
+    const specOptions = [
+      { label: '🪧 Banner', val: 'Banner' },
+      { label: '🖼️ 15x21', val: '15x21' },
+      { label: '🌟 Pôster', val: 'Foto Pôster' }
+    ];
+    for (const opt of specOptions) {
+      const sBtn = document.createElement('button');
+      const isMarked = photo.specials && photo.specials.includes(opt.val);
+      sBtn.className = `card-spec-btn ${isMarked ? 'active-spec' : ''}`;
+      sBtn.textContent = opt.label;
+      sBtn.title = `Marcar para ${opt.val}`;
+      sBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePhotoSpecial(photo.name, opt.val);
+      });
+      specBar.appendChild(sBtn);
+    }
+
     card.appendChild(thumbWrap);
     card.appendChild(footer);
+    card.appendChild(specBar);
     container.appendChild(card);
   }
 }
@@ -780,6 +860,15 @@ function renderLoupeView(filtered) {
     badge.className = 'loupe-status-badge hidden';
   }
 
+  // Badge de Ampliação (Banner / 15x21 / Foto Pôster)
+  const specBadge = document.getElementById('loupeSpecialBadge');
+  if (photo.specials && photo.specials.length > 0) {
+    specBadge.textContent = `🖼️ ${photo.specials.join(' + ').toUpperCase()}`;
+    specBadge.classList.remove('hidden');
+  } else {
+    specBadge.classList.add('hidden');
+  }
+
   // Botões da barra inferior
   const selectBtn = document.getElementById('loupeSelectBtn');
   const selectText = document.getElementById('loupeSelectBtnText');
@@ -788,6 +877,11 @@ function renderLoupeView(filtered) {
 
   const maybeBtn = document.getElementById('loupeMaybeBtn');
   maybeBtn.classList.toggle('active-maybe', photo.status === 'maybe');
+
+  const specs = photo.specials || [];
+  document.getElementById('loupeBannerBtn').classList.toggle('active-special', specs.includes('Banner'));
+  document.getElementById('loupe15x21Btn').classList.toggle('active-special', specs.includes('15x21'));
+  document.getElementById('loupePosterBtn').classList.toggle('active-special', specs.includes('Foto Pôster'));
 }
 
 function navigatePhoto(delta) {
@@ -928,6 +1022,22 @@ function openFinishModal() {
     document.getElementById('finExtraTotalValue').textContent = formatCurrency(extras * state.extraPrice);
   } else {
     valBanner.classList.add('hidden');
+  }
+
+  // Resumo das Ampliações (Banner, 15x21, Foto Pôster)
+  const specialPhotos = state.photos.filter((p) => p.specials && p.specials.length > 0);
+  const specBanner = document.getElementById('finSpecialsBanner');
+  const specList = document.getElementById('finSpecialsList');
+  specList.innerHTML = '';
+  if (specialPhotos.length > 0) {
+    specBanner.classList.remove('hidden');
+    for (const spPhoto of specialPhotos) {
+      const li = document.createElement('li');
+      li.textContent = `• ${spPhoto.name}  ➔  ${spPhoto.specials.join(' + ')}`;
+      specList.appendChild(li);
+    }
+  } else {
+    specBanner.classList.add('hidden');
   }
 
   const underBanner = document.getElementById('finWarningUnderPackage');
@@ -1078,9 +1188,11 @@ function buildReportPdfBytes(selectedPhotos) {
   const hasPrice = state.extraPrice > 0;
   const totalExtraCurrency = formatCurrency(extras * state.extraPrice);
   const unitExtraCurrency = formatCurrency(state.extraPrice);
+  const specialPhotos = selectedPhotos.filter((p) => p.specials && p.specials.length > 0);
 
-  // Paginação das fotos (Página 1 comporta 20 linhas; demais páginas comportam 30 linhas)
-  const firstPageMax = hasPrice ? 19 : 21;
+  // Paginação das fotos ajustada pelo espaço usado no topo da Página 1
+  const specLinesCount = specialPhotos.length > 0 ? Math.min(6, specialPhotos.length) + 2 : 0;
+  const firstPageMax = Math.max(10, (hasPrice ? 19 : 21) - specLinesCount);
   const nextPageMax = 30;
   const pagesRows = [];
 
@@ -1168,9 +1280,41 @@ function buildReportPdfBytes(selectedPhotos) {
           0.32,
           0.04
         );
-        cursorY -= 44;
+        cursorY -= 40;
       } else {
         cursorY -= 8;
+      }
+
+      // Quadro de Ampliações / Destaques (Banner, 15x21, Foto Pôster)
+      if (specialPhotos.length > 0) {
+        const boxH = 22 + specialPhotos.length * 15;
+        const boxY = cursorY - boxH;
+        drawRect(40, boxY, 515, boxH, 0.95, 0.93, 0.99);
+        drawStrokeRect(40, boxY, 515, boxH, 0.55, 0.36, 0.96);
+        drawText(
+          'FOTOS PARA AMPLIAÇÃO / DESTAQUE (BANNER / 15x21 / FOTO PÔSTER):',
+          52,
+          cursorY - 15,
+          9,
+          true,
+          0.38,
+          0.16,
+          0.75
+        );
+        specialPhotos.forEach((sp, idx) => {
+          const lineY = cursorY - 30 - idx * 15;
+          drawText(
+            `• ${sp.name}   -->   ${sp.specials.join(' + ').toUpperCase()}`,
+            60,
+            lineY,
+            9,
+            true,
+            0.22,
+            0.12,
+            0.45
+          );
+        });
+        cursorY = boxY - 12;
       }
     }
 
@@ -1178,7 +1322,7 @@ function buildReportPdfBytes(selectedPhotos) {
     drawRect(40, cursorY - 22, 515, 22, 0.16, 0.16, 0.2);
     drawText('Nº', 52, cursorY - 15, 9, true, 1, 1, 1);
     drawText('ARQUIVO DA FOTO ESCOLHIDA', 100, cursorY - 15, 9, true, 1, 1, 1);
-    drawText('SITUAÇÃO NO PACOTE', 415, cursorY - 15, 9, true, 1, 1, 1);
+    drawText('SITUAÇÃO / AMPLIAÇÃO', 365, cursorY - 15, 9, true, 1, 1, 1);
     cursorY -= 22;
 
     // Linhas das Fotos
@@ -1186,6 +1330,8 @@ function buildReportPdfBytes(selectedPhotos) {
       const item = rows[rIdx];
       const rowY = cursorY - 20;
       const isExtra = item.num > limit;
+      const hasSpec = item.photo.specials && item.photo.specials.length > 0;
+      const specSuffix = hasSpec ? ` • [${item.photo.specials.join('/')}]` : '';
 
       if (rIdx % 2 === 0) {
         drawRect(40, rowY, 515, 20, 0.97, 0.97, 0.99);
@@ -1197,9 +1343,18 @@ function buildReportPdfBytes(selectedPhotos) {
       drawText(item.photo.name, 100, rowY + 6, 9.5, false, 0.1, 0.1, 0.14);
 
       if (isExtra) {
-        drawText('FOTO EXTRA', 415, rowY + 6, 8.5, true, 0.85, 0.38, 0.05);
+        drawText(`FOTO EXTRA${specSuffix}`, 365, rowY + 6, 8.5, true, 0.85, 0.38, 0.05);
       } else {
-        drawText('Inclusa no Pacote', 415, rowY + 6, 8.5, false, 0.08, 0.55, 0.38);
+        drawText(
+          `Inclusa no Pacote${specSuffix}`,
+          365,
+          rowY + 6,
+          8.5,
+          hasSpec,
+          hasSpec ? 0.38 : 0.08,
+          hasSpec ? 0.16 : 0.55,
+          hasSpec ? 0.75 : 0.38
+        );
       }
 
       cursorY = rowY;
@@ -1328,6 +1483,15 @@ function handleKeyboardShortcuts(e) {
   } else if (key === 'c') {
     e.preventDefault();
     startCompareWithActive();
+  } else if (key === 'b') {
+    e.preventDefault();
+    toggleActiveSpecial('Banner');
+  } else if (key === 't') {
+    e.preventDefault();
+    toggleActiveSpecial('15x21');
+  } else if (key === 'p') {
+    e.preventDefault();
+    toggleActiveSpecial('Foto Pôster');
   } else if (key === 'z' && state.currentView === 'loupe') {
     e.preventDefault();
     toggleLoupeZoom();

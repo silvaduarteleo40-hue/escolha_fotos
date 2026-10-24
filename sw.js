@@ -1,4 +1,4 @@
-const CACHE_NAME = 'escolha-fotos-v2';
+const CACHE_NAME = 'escolha-fotos-v3';
 const ASSETS = [
   './',
   './index.html',

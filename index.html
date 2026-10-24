@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#18181b" />
-  <title>Foco & Escolha — Seleção de Fotos</title>
+  <title>Foto & Escolha — Seleção de Fotos</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <link rel="stylesheet" href="./style.css" />
@@ -70,6 +70,9 @@
       </button>
       <button class="filter-tab tab-review" data-filter="selected">
         2ª Passada: Revisar Escolhidas ❤️ <span id="countSelected" class="badge badge-heart">0</span>
+      </button>
+      <button class="filter-tab" data-filter="special">
+        Banner / 15x21 / Pôster 🖼️ <span id="countSpecial" class="badge badge-special">0</span>
       </button>
       <button class="filter-tab" data-filter="maybe">
         Em Dúvida ⭐ <span id="countMaybe" class="badge badge-maybe">0</span>
@@ -165,6 +168,7 @@
         <div id="loupeImageContainer" class="loupe-image-container">
           <img id="loupeImage" src="" alt="Foto em destaque" draggable="false" />
           <div id="loupeStatusBadge" class="loupe-status-badge hidden"></div>
+          <div id="loupeSpecialBadge" class="loupe-special-badge hidden"></div>
           <div class="loupe-info-overlay">
             <span id="loupePositionText">1 / 100</span>
             <span id="loupeFilenameText">foto_001.jpg</span>
@@ -182,14 +186,26 @@
         <button id="loupeMaybeBtn" class="action-pill btn-maybe" title="Atalho: D">
           ⭐ <span id="loupeMaybeBtnText">Dúvida</span> <kbd>D</kbd>
         </button>
+        <div class="special-group-bar">
+          <span class="special-group-label">Ampliação:</span>
+          <button id="loupeBannerBtn" class="action-pill btn-special" title="Marcar para Banner (Atalho: B)">
+            🪧 Banner <kbd>B</kbd>
+          </button>
+          <button id="loupe15x21Btn" class="action-pill btn-special" title="Marcar para Foto 15x21 (Atalho: T)">
+            🖼️ 15x21 <kbd>T</kbd>
+          </button>
+          <button id="loupePosterBtn" class="action-pill btn-special" title="Marcar para Foto Pôster (Atalho: P)">
+            🌟 Foto Pôster <kbd>P</kbd>
+          </button>
+        </div>
         <button id="loupeCompareBtn" class="action-pill" title="Fixar para comparar lado a lado (Atalho: C)">
-          ⚖️ Comparar esta foto <kbd>C</kbd>
+          ⚖️ Comparar <kbd>C</kbd>
         </button>
         <button id="loupeZoomBtn" class="action-pill" title="Dar Zoom (Atalho: Z ou Clique na foto)">
           🔍 Zoom <kbd>Z</kbd>
         </button>
         <button id="loupeBackGridBtn" class="action-pill" title="Voltar para a Grade (Atalho: G ou Esc)">
-          ⊞ Voltar à Grade <kbd>G</kbd>
+          ⊞ Grade <kbd>G</kbd>
         </button>
       </div>
     </section>
@@ -332,6 +348,11 @@
         <div id="finExtraValueBanner" class="extra-value-banner hidden">
           <span>Valor total das fotos extras:</span>
           <strong id="finExtraTotalValue">R$ 0,00</strong>
+        </div>
+
+        <div id="finSpecialsBanner" class="specials-summary-banner hidden">
+          <strong>🖼️ Fotos escolhidas para Ampliação (Banner / 15x21 / Pôster):</strong>
+          <ul id="finSpecialsList" class="specials-summary-list"></ul>
         </div>
 
         <div id="finWarningUnderPackage" class="warning-banner hidden">
