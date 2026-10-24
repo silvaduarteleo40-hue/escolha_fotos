@@ -1,0 +1,19 @@
+{
+  "name": "Foco & Escolha — Seleção de Fotos",
+  "short_name": "Escolha de Fotos",
+  "description": "Programa para fotógrafos: renomeação de ensaios, escolha de fotos por pacote, revisão de extras e separação automática.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121214",
+  "theme_color": "#18181b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

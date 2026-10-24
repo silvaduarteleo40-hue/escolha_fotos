@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#18181b" />
+  <title>Foco & Escolha — Seleção de Fotos</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <!-- TOP HEADER -->
+  <header class="top-bar">
+    <div class="brand-area">
+      <img src="./icon.svg" alt="Logo" class="brand-icon" />
+      <div>
+        <h1 class="brand-title">Foco &amp; Escolha</h1>
+        <p id="sessionNameLabel" class="session-subtitle">Nenhum ensaio aberto</p>
+      </div>
+    </div>
+
+    <!-- PACKAGE COUNTER WIDGET (Hidden until folder is loaded) -->
+    <div id="packageWidget" class="package-widget hidden">
+      <div class="pkg-stat">
+        <span class="pkg-label">Pacote Contratado</span>
+        <strong id="pkgLimitValue" class="pkg-number">20</strong>
+      </div>
+      <div class="pkg-divider"></div>
+      <div class="pkg-stat">
+        <span class="pkg-label">Escolhidas ❤️</span>
+        <strong id="pkgSelectedValue" class="pkg-number highlight-heart">0</strong>
+      </div>
+      <div class="pkg-divider"></div>
+      <div id="pkgBalanceBox" class="pkg-stat">
+        <span id="pkgBalanceLabel" class="pkg-label">Restam no Pacote</span>
+        <strong id="pkgBalanceValue" class="pkg-number">20</strong>
+      </div>
+      <div id="pkgExtraPriceBox" class="pkg-stat hidden">
+        <span class="pkg-label">Total em Extras</span>
+        <div class="extra-price-row">
+          <strong id="pkgExtraPriceValue" class="pkg-number highlight-extra">R$ 0,00</strong>
+          <button id="togglePriceBtn" class="icon-btn-sm" title="Mostrar/Ocultar valor em R$">👁️</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOP ACTIONS -->
+    <div class="top-actions">
+      <button id="installPwaBtn" class="btn btn-outline hidden" title="Instalar programa no computador">
+        📲 Instalar App
+      </button>
+      <button id="openFolderBtn" class="btn btn-secondary">
+        📂 Abrir Pasta
+      </button>
+      <button id="configSessionBtn" class="btn btn-secondary hidden">
+        ✏️ Ensaio / Pacote
+      </button>
+      <button id="finishSelectionBtn" class="btn btn-primary hidden">
+        ✅ Finalizar e Separar
+      </button>
+    </div>
+  </header>
+
+  <!-- SECOND TOOLBAR: FILTERS (1st PASS vs 2nd PASS REVIEW) & VIEW MODES -->
+  <nav id="subToolbar" class="sub-toolbar hidden">
+    <div class="filter-tabs" role="tablist">
+      <button class="filter-tab active" data-filter="all">
+        1ª Passada: Todas <span id="countAll" class="badge">0</span>
+      </button>
+      <button class="filter-tab tab-review" data-filter="selected">
+        2ª Passada: Revisar Escolhidas ❤️ <span id="countSelected" class="badge badge-heart">0</span>
+      </button>
+      <button class="filter-tab" data-filter="maybe">
+        Em Dúvida ⭐ <span id="countMaybe" class="badge badge-maybe">0</span>
+      </button>
+      <button class="filter-tab" data-filter="unmarked">
+        Não Marcadas <span id="countUnmarked" class="badge">0</span>
+      </button>
+    </div>
+
+    <div class="view-controls">
+      <div class="view-mode-group">
+        <button class="view-btn active" data-view="grid" title="Modo Grade (Atalho: G)">
+          ⊞ Grade
+        </button>
+        <button class="view-btn" data-view="loupe" title="Foto Grande (Atalho: 1 ou Enter)">
+          🖼️ Tela Grande
+        </button>
+        <button class="view-btn" data-view="compare" title="Comparar 2 Fotos Lado a Lado (Atalho: C)">
+          ⚖️ Comparar Lado a Lado
+        </button>
+      </div>
+
+      <div id="gridSizeControl" class="grid-size-control">
+        <label for="gridSizeRange">Tamanho:</label>
+        <input id="gridSizeRange" type="range" min="180" max="420" value="250" />
+      </div>
+    </div>
+  </nav>
+
+  <!-- PACKAGE PROGRESS BAR -->
+  <div id="packageProgressBarWrap" class="pkg-progress-wrap hidden">
+    <div id="packageProgressBar" class="pkg-progress-bar"></div>
+  </div>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="main-content">
+    <!-- WELCOME SCREEN -->
+    <section id="welcomeScreen" class="welcome-screen">
+      <div class="welcome-card">
+        <div class="welcome-icon">📸</div>
+        <h2>Bem-vinda ao Foco &amp; Escolha</h2>
+        <p class="welcome-desc">
+          Renomeie o ensaio, faça a seleção junto com o cliente acompanhando o limite do pacote e as fotos extras, e separe tudo automaticamente na pasta <strong>Escolhidas</strong>.
+        </p>
+
+        <div class="steps-preview">
+          <div class="step-item">
+            <span class="step-num">1</span>
+            <div>
+              <strong>Abra a pasta da câmera</strong>
+              <p>Escolha a pasta onde você baixou as fotos JPG ou PNG.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <span class="step-num">2</span>
+            <div>
+              <strong>Renomeie e defina o pacote</strong>
+              <p>Coloque o nome do ensaio (ex.: <code>Ensaio_Maria_001.jpg</code>) e quantas fotos estão no pacote.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <span class="step-num">3</span>
+            <div>
+              <strong>Escolha, revise e separe</strong>
+              <p>Marque as favoritas (❤️), revise os excessos lado a lado e separe na pasta <code>Escolhidas</code>.</p>
+            </div>
+          </div>
+        </div>
+
+        <button id="welcomeOpenFolderBtn" class="btn btn-primary btn-lg">
+          📂 Selecionar Pasta das Fotos
+        </button>
+        <p class="privacy-note">
+          🔒 100% Local e Instantâneo: suas fotos nunca saem do computador nem consomem internet.
+        </p>
+      </div>
+    </section>
+
+    <!-- EMPTY FILTER STATE -->
+    <section id="emptyFilterState" class="empty-state hidden">
+      <p id="emptyFilterText">Nenhuma foto encontrada neste filtro.</p>
+      <button id="resetFilterBtn" class="btn btn-secondary">Ver Todas as Fotos</button>
+    </section>
+
+    <!-- VIEW 1: GRID VIEW -->
+    <section id="gridView" class="grid-view hidden"></section>
+
+    <!-- VIEW 2: LOUPE (SINGLE LARGE PHOTO) VIEW -->
+    <section id="loupeView" class="loupe-view hidden">
+      <div class="loupe-stage">
+        <button id="loupePrevBtn" class="nav-arrow nav-prev" title="Foto Anterior (←)">❮</button>
+
+        <div id="loupeImageContainer" class="loupe-image-container">
+          <img id="loupeImage" src="" alt="Foto em destaque" draggable="false" />
+          <div id="loupeStatusBadge" class="loupe-status-badge hidden"></div>
+          <div class="loupe-info-overlay">
+            <span id="loupePositionText">1 / 100</span>
+            <span id="loupeFilenameText">foto_001.jpg</span>
+          </div>
+        </div>
+
+        <button id="loupeNextBtn" class="nav-arrow nav-next" title="Próxima Foto (→)">❯</button>
+      </div>
+
+      <!-- LOUPE ACTION BAR -->
+      <div class="loupe-actions-bar">
+        <button id="loupeSelectBtn" class="action-pill btn-heart" title="Atalho: Espaço ou F">
+          ❤️ <span id="loupeSelectBtnText">Escolher Foto</span> <kbd>Espaço</kbd>
+        </button>
+        <button id="loupeMaybeBtn" class="action-pill btn-maybe" title="Atalho: D">
+          ⭐ <span id="loupeMaybeBtnText">Dúvida</span> <kbd>D</kbd>
+        </button>
+        <button id="loupeCompareBtn" class="action-pill" title="Fixar para comparar lado a lado (Atalho: C)">
+          ⚖️ Comparar esta foto <kbd>C</kbd>
+        </button>
+        <button id="loupeZoomBtn" class="action-pill" title="Dar Zoom (Atalho: Z ou Clique na foto)">
+          🔍 Zoom <kbd>Z</kbd>
+        </button>
+        <button id="loupeBackGridBtn" class="action-pill" title="Voltar para a Grade (Atalho: G ou Esc)">
+          ⊞ Voltar à Grade <kbd>G</kbd>
+        </button>
+      </div>
+
+      <!-- BOTTOM FILMSTRIP -->
+      <div id="loupeFilmstrip" class="filmstrip"></div>
+    </section>
+
+    <!-- VIEW 3: SIDE-BY-SIDE COMPARE VIEW -->
+    <section id="compareView" class="compare-view hidden">
+      <div class="compare-header-bar">
+        <span>💡 <strong>Modo Comparação:</strong> Ideal na revisão para o cliente decidir entre duas fotos parecidas. Clique em qualquer miniatura na faixa abaixo para trocar a foto da direita.</span>
+        <button id="exitCompareBtn" class="btn btn-secondary btn-sm">Voltar para Tela Grande</button>
+      </div>
+
+      <div class="compare-split">
+        <!-- LEFT PHOTO (PINNED) -->
+        <div class="compare-pane" id="comparePaneLeft">
+          <div class="compare-pane-top">
+            <span class="pane-tag">📌 Foto A (Fixada)</span>
+            <strong id="compareLeftName">-</strong>
+            <button id="swapLeftBtn" class="btn btn-secondary btn-xs" title="Usar a foto da direita como Foto A">⇄ Trocar A por B</button>
+          </div>
+          <div class="compare-img-wrap">
+            <img id="compareLeftImg" src="" alt="Foto A" />
+            <div id="compareLeftBadge" class="loupe-status-badge hidden"></div>
+          </div>
+          <div class="compare-pane-actions">
+            <button id="compareLeftHeartBtn" class="action-pill btn-heart">❤️ Escolhida</button>
+            <button id="compareLeftMaybeBtn" class="action-pill btn-maybe">⭐ Dúvida</button>
+          </div>
+        </div>
+
+        <!-- RIGHT PHOTO (CANDIDATE) -->
+        <div class="compare-pane" id="comparePaneRight">
+          <div class="compare-pane-top">
+            <span class="pane-tag">🔍 Foto B (Use as setas ← → ou clique abaixo)</span>
+            <strong id="compareRightName">-</strong>
+          </div>
+          <div class="compare-img-wrap">
+            <img id="compareRightImg" src="" alt="Foto B" />
+            <div id="compareRightBadge" class="loupe-status-badge hidden"></div>
+          </div>
+          <div class="compare-pane-actions">
+            <button id="compareRightHeartBtn" class="action-pill btn-heart">❤️ Escolhida</button>
+            <button id="compareRightMaybeBtn" class="action-pill btn-maybe">⭐ Dúvida</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="compareFilmstrip" class="filmstrip"></div>
+    </section>
+  </main>
+
+  <!-- MODAL 1: CONFIGURE SESSION & RENAME FILES -->
+  <div id="setupModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>⚙️ Configurar Ensaio e Renomear Fotos</h3>
+        <button id="closeSetupModalBtn" class="close-btn" title="Fechar">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="folder-summary-banner">
+          <span>📂 Pasta aberta: <strong id="modalFolderName">-</strong></span>
+          <span>📸 <strong id="modalPhotoCount">0</strong> fotos encontradas</span>
+        </div>
+
+        <!-- STEP A: RENAME -->
+        <div class="form-section">
+          <h4>1. Nome do Ensaio e Renomeação</h4>
+          <p class="form-hint">Digite o nome do ensaio para padronizar os arquivos da pasta em sequência.</p>
+          <div class="form-group">
+            <label for="essayNameInput">Nome do Ensaio</label>
+            <input
+              id="essayNameInput"
+              type="text"
+              placeholder="Ex.: Ensaio_Maria"
+              autocomplete="off"
+            />
+          </div>
+          <div class="rename-preview-box">
+            <span>Prévia dos nomes:</span>
+            <code id="renamePreviewText">Ensaio_Maria_001.jpg, Ensaio_Maria_002.jpg...</code>
+          </div>
+          <label class="checkbox-row">
+            <input id="doRenameCheckbox" type="checkbox" checked />
+            <span>Renomear os arquivos da pasta agora com este nome</span>
+          </label>
+          <p id="alreadyRenamedNotice" class="notice-text hidden">
+            ✨ As fotos desta pasta já parecem estar renomeadas com esse nome (desmarcado para evitar renomear duas vezes).
+          </p>
+        </div>
+
+        <!-- STEP B: PACKAGE -->
+        <div class="form-section">
+          <h4>2. Pacote do Cliente (Para controle de Fotos Extras)</h4>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="packageLimitInput">Qtd. de Fotos no Pacote</label>
+              <input id="packageLimitInput" type="number" min="1" max="5000" value="20" />
+            </div>
+            <div class="form-group">
+              <label for="extraPhotoPriceInput">Valor da Foto Extra (R$ - Opcional)</label>
+              <input id="extraPhotoPriceInput" type="number" min="0" step="0.50" placeholder="Ex.: 25.00" value="0" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="cancelSetupBtn" class="btn btn-secondary">Pular Renomeação</button>
+        <button id="applySetupBtn" class="btn btn-primary">Salvar e Começar Escolha</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: FINISH & EXPORT CHOSEN PHOTOS -->
+  <div id="finishModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>✅ Finalizar Escolha e Separar Fotos</h3>
+        <button id="closeFinishModalBtn" class="close-btn" title="Fechar">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="summary-cards-grid">
+          <div class="summary-mini-card">
+            <span>Total do Ensaio</span>
+            <strong id="finTotalCount">0</strong>
+          </div>
+          <div class="summary-mini-card card-heart">
+            <span>Total Escolhidas ❤️</span>
+            <strong id="finSelectedCount">0</strong>
+          </div>
+          <div class="summary-mini-card">
+            <span>Inclusas no Pacote</span>
+            <strong id="finPackageLimit">20</strong>
+          </div>
+          <div class="summary-mini-card card-extra">
+            <span>Fotos Extras ✨</span>
+            <strong id="finExtrasCount">0</strong>
+          </div>
+        </div>
+
+        <div id="finExtraValueBanner" class="extra-value-banner hidden">
+          <span>Valor total das fotos extras:</span>
+          <strong id="finExtraTotalValue">R$ 0,00</strong>
+        </div>
+
+        <div id="finWarningUnderPackage" class="warning-banner hidden">
+          ⚠️ O cliente escolheu menos fotos do que o pacote contratado.
+        </div>
+
+        <div class="form-section">
+          <h4>Como separar na subpasta <code>Escolhidas</code>?</h4>
+          <label class="radio-card">
+            <input type="radio" name="exportMode" value="move" checked />
+            <div>
+              <strong>Mover para a pasta <code>Escolhidas</code> (Recomendado)</strong>
+              <p>Transfere as fotos escolhidas para dentro da pasta <code>Escolhidas</code> (sem duplicar peso no computador).</p>
+            </div>
+          </label>
+          <label class="radio-card">
+            <input type="radio" name="exportMode" value="copy" />
+            <div>
+              <strong>Copiar para a pasta <code>Escolhidas</code></strong>
+              <p>Cria uma cópia das escolhidas dentro de <code>Escolhidas</code> e mantém todas na pasta principal também.</p>
+            </div>
+          </label>
+        </div>
+
+        <div class="form-section">
+          <label class="checkbox-row">
+            <input id="generateReportCheckbox" type="checkbox" checked />
+            <span>Gerar e salvar o <strong>Comprovante / Resumo em PDF</strong> (<code>Resumo_Escolha.pdf</code>) na pasta</span>
+          </label>
+        </div>
+
+        <div id="exportProgressBox" class="export-progress-box hidden">
+          <p id="exportProgressText">Separando fotos...</p>
+          <div class="pkg-progress-wrap">
+            <div id="exportProgressBar" class="pkg-progress-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="reviewBeforeFinishBtn" class="btn btn-secondary">Voltar e Revisar Escolhidas</button>
+        <button id="confirmExportBtn" class="btn btn-primary">Separar Fotos Escolhidas Agora</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
+
