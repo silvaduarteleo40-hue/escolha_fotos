@@ -1236,7 +1236,7 @@ function buildReportPdfBytes(selectedPhotos) {
 
     // Cabeçalho Escuro (Topo da folha A4: 595 x 842)
     drawRect(0, 762, 595, 80, 0.09, 0.09, 0.11);
-    drawText('FOCO & ESCOLHA — RESUMO DE SELEÇÃO DE FOTOS', 40, 808, 13, true, 1, 1, 1);
+    drawText('FOTO & ESCOLHA — RESUMO DE SELEÇÃO DE FOTOS', 40, 808, 13, true, 1, 1, 1);
     drawText(`Ensaio: ${essayTitle}`, 40, 786, 11, false, 0.82, 0.82, 0.88);
     drawText(`Data: ${dateStr}`, 400, 786, 9.5, false, 0.75, 0.75, 0.8);
 
